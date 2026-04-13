@@ -76,7 +76,7 @@ map () {
   rm "${fname}.split.sam"
 
   echo "Sorting alignment"
-  samtools sort -@ $proc "${fname}_unsort.bam" > "${fname}.bam"
+  samtools sort -@ "$proc" -o "${fname}.bam" "${fname}_unsort.bam"
   rm "${fname}_unsort.bam"
 
   echo "Indexing alignment"

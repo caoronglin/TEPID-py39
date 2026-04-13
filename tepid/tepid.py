@@ -1,5 +1,4 @@
-
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from __future__ import division
 import os
@@ -14,7 +13,7 @@ import sys
 
 def readNames(names):
     n = []
-    with open(names, 'r') as infile:
+    with open(names, "r") as infile:
         for line in infile:
             line = line.rsplit()
             if len(line) > 0:
@@ -29,10 +28,10 @@ def getOtherLines(acc, infile):
     Return list of accessions for which TE variant was not identified, with name of TE(s) and coordinates
     """
     regions = []
-    with open(infile, 'r') as inf:
+    with open(infile, "r") as inf:
         for line in inf:
             line = line.rsplit()
-            accessions = line[-1].split(',')
+            accessions = line[-1].split(",")
             inverse_acc = [i for i in acc if i not in accessions]
             regions.append((line, inverse_acc))
     return regions
@@ -42,7 +41,7 @@ def find_reads(coords, bam):
     r = []
     bam_reads = bam.fetch(coords[0], coords[1], coords[2])
     for i in bam_reads:
-        r.append(i.qname)
+        r.append(i.query_name)
     bam.reset()
     if len(r) > 0:
         return r
@@ -61,8 +60,8 @@ def flatten_list(l):
 def check_no_breaks(coords):
     """[[start,stop]...[start,stop]]"""
     copy = sorted(list(coords))
-    for x in range(len(copy)-1):
-        if _overlap(copy[x][0], copy[x][1], copy[x+1][0], copy[x+1][1], 0) is False:
+    for x in range(len(copy) - 1):
+        if _overlap(copy[x][0], copy[x][1], copy[x + 1][0], copy[x + 1][1], 0) is False:
             return False
         else:
             pass
@@ -76,16 +75,16 @@ def find_reads_conc(coords, bam):
     reads = bam.fetch(coords[0], coords[1], coords[2])
     intervals = []
     for read in reads:
-        if read.pos is not None and read.aend is not None:
-            intervals.append([read.pos, read.aend])
+        if read.reference_start is not None and read.reference_end is not None:
+            intervals.append([read.reference_start, read.reference_end])
     intervals = flatten_list(intervals)
     return check_no_breaks(intervals)
 
 
 def extract_reads(bam, name_indexed, names, acc):
     header = bam.header.copy()
-    out_name = 'extracted_reads_{}.bam'.format(acc)
-    out_bam = pysam.Samfile(out_name, 'wb', header=header)
+    out_name = "extracted_reads_{}.bam".format(acc)
+    out_bam = pysam.AlignmentFile(out_name, "wb", header=header)
     for name in names:
         try:
             name_indexed.find(name)
@@ -100,7 +99,11 @@ def extract_reads(bam, name_indexed, names, acc):
 
 
 def check_te_overlaps(te, bamfile, te_list):
-    intersections = pybedtools.BedTool(bamfile).bam_to_bed().intersect(te, wb=True, nonamecheck=True)
+    intersections = (
+        pybedtools.BedTool(bamfile)
+        .bam_to_bed()
+        .intersect(te, wb=True, nonamecheck=True)
+    )
     reads = []
     for r in intersections:
         if r[-3] in te_list:
@@ -111,13 +114,17 @@ def check_te_overlaps(te, bamfile, te_list):
 
 
 def check_te_overlaps_dels(te, bamfile, te_list, prefix):
-    pybedtools.BedTool(bamfile).bam_to_bed().saveas(prefix + 'split.temp')
-    convert_split_pairbed(prefix + 'split.temp', prefix + 'split_bedpe.temp')
-    split = pybedtools.BedTool(prefix + 'split_bedpe.temp').each(append_origin, word='split').saveas()
-    create_deletion_coords(split, prefix + 'second_pass_del_coords.temp')
-    dels = pybedtools.BedTool(prefix + 'second_pass_del_coords.temp').sort()
+    pybedtools.BedTool(bamfile).bam_to_bed().saveas(prefix + "split.temp")
+    convert_split_pairbed(prefix + "split.temp", prefix + "split_bedpe.temp")
+    split = (
+        pybedtools.BedTool(prefix + "split_bedpe.temp")
+        .each(append_origin, word="split")
+        .saveas()
+    )
+    create_deletion_coords(split, prefix + "second_pass_del_coords.temp")
+    dels = pybedtools.BedTool(prefix + "second_pass_del_coords.temp").sort()
     intersections = dels.intersect(te, wb=True, nonamecheck=True, sorted=True)
-    os.remove(prefix + 'second_pass_del_coords.temp')
+    os.remove(prefix + "second_pass_del_coords.temp")
     reads = []
     for r in intersections:
         if r[-3] in te_list:
@@ -128,7 +135,7 @@ def check_te_overlaps_dels(te, bamfile, te_list, prefix):
 
 
 def get_last_id(acc, indel):
-    with open("{i}_reads_{a}.txt".format(i=indel, a=acc), 'r') as f:
+    with open("{i}_reads_{a}.txt".format(i=indel, a=acc), "r") as f:
         for line in f:
             pass
     return int(line.rsplit()[0][1:])
@@ -137,8 +144,8 @@ def get_last_id(acc, indel):
 def write_te(te_file, read_file, data, read_names, iterator):
     # chr start stop chr start stop te accessions
     coords = [str(x) for x in data[:-2]]
-    te_file.write("\t".join(coords)+"\t"+data[-2]+"\t"+str(iterator)+"\n")
-    read_file.write(">"+str(iterator)+"\t"+",".join(read_names)+"\n")
+    te_file.write("\t".join(coords) + "\t" + data[-2] + "\t" + str(iterator) + "\n")
+    read_file.write(">" + str(iterator) + "\t" + ",".join(read_names) + "\n")
 
 
 def ambiguous(coords, bam, chrom_sizes):
@@ -150,18 +157,18 @@ def ambiguous(coords, bam, chrom_sizes):
     read_count = 0
     chrom = coords[0]
     if chrom not in chrom_sizes.keys():
-        raise Exception('Chromosome names do not match TE annotation')
+        raise Exception("Chromosome names do not match TE annotation")
     else:
         pass
-    if (coords[1] - 200 )> 0:
-        start = coords[1]-200
+    if (coords[1] - 200) > 0:
+        start = coords[1] - 200
     else:
         start = 0
     if (coords[2] + 200) < chrom_sizes[chrom]:
-        stop = coords[2]+200
+        stop = coords[2] + 200
     else:
         stop = chrom_sizes[chrom]
-    length = stop-start
+    length = stop - start
     for read in bam.pileup(chrom, start, stop):
         read_count += read.n
     av = read_count / length
@@ -174,29 +181,52 @@ def ambiguous(coords, bam, chrom_sizes):
 
 def write_ambiguous(fname, data):
     coords = [str(x) for x in data[:-2]]
-    fname.write("\t".join(coords)+"\t"+data[-2]+"\n")
+    fname.write("\t".join(coords) + "\t" + data[-2] + "\n")
 
 
-def process_missed(data, indel, concordant, split_alignments, name_indexed, acc, te, refine_read_count, chrom_sizes, prefix):
+def process_missed(
+    data,
+    indel,
+    concordant,
+    split_alignments,
+    name_indexed,
+    acc,
+    te,
+    refine_read_count,
+    chrom_sizes,
+    prefix,
+):
     read_file_name = "second_pass_reads_{t}_{a}.txt".format(t=indel, a=acc)
     te_file_name = "second_pass_{t}_{a}.bed".format(t=indel, a=acc)
-    ambiguous_file_name = 'ambiguous_{t}_{a}.bed'.format(t=indel, a=acc)
-    with open(read_file_name, 'w+') as read_file, open(te_file_name, 'w+') as te_file, open(ambiguous_file_name, 'w+') as no_call:
+    ambiguous_file_name = "ambiguous_{t}_{a}.bed".format(t=indel, a=acc)
+    with (
+        open(read_file_name, "w+") as read_file,
+        open(te_file_name, "w+") as te_file,
+        open(ambiguous_file_name, "w+") as no_call,
+    ):
         for i in data:
             coords = (i[0][0], int(i[0][1]), int(i[0][2]))
             te_list = i[0][-2].split(",")
             if acc in i[1]:
-                if find_reads_conc(coords, concordant) is False:  # returns False if there is a break in coverage within region
+                if (
+                    find_reads_conc(coords, concordant) is False
+                ):  # returns False if there is a break in coverage within region
                     split_names = find_reads(coords, split_alignments)
                     if split_names is not False:
-                        extracted = extract_reads(split_alignments, name_indexed, split_names, acc)
-                        if indel == 'insertion':
+                        extracted = extract_reads(
+                            split_alignments, name_indexed, split_names, acc
+                        )
+                        if indel == "insertion":
                             read_names = check_te_overlaps(te, extracted, te_list)
-                        elif indel == 'deletion':
-                            read_names = check_te_overlaps_dels(te, extracted, te_list, prefix)
+                        elif indel == "deletion":
+                            read_names = check_te_overlaps_dels(
+                                te, extracted, te_list, prefix
+                            )
                         else:
                             raise Exception()
-                        if len(read_names) >= refine_read_count:  # enough evidence to call indel
+                        if (
+                            len(read_names) >= refine_read_count
+                        ):  # enough evidence to call indel
                             try:
                                 iterator
                             except NameError:
@@ -232,23 +262,47 @@ def refine(options):
     if options.insertions is not False:
         insertions = getOtherLines(names, options.insertions)
     if options.deletions is not False:
-        deletions = getOtherLines(names, options.deletions)  # format ([data], [inverse_accessions])
-    print "Processing "+options.name
+        deletions = getOtherLines(
+            names, options.deletions
+        )  # format ([data], [inverse_accessions])
+    print("Processing " + options.name)
     chrom_sizes = check_bam(options.conc, options.proc, options.prefix)
     check_bam(options.split, options.proc, options.prefix, make_new_index=True)
     cov = calc_cov(options.conc, 100000, 120000)
-    concordant = pysam.AlignmentFile(options.conc, 'rb')
-    split_alignments = pysam.AlignmentFile(options.split, 'rb')
+    concordant = pysam.AlignmentFile(options.conc, "rb")
+    split_alignments = pysam.AlignmentFile(options.split, "rb")
     name_indexed = pysam.IndexedReads(split_alignments)
     name_indexed.build()
     if options.deletions is not False:
-        print "  checking deletions"
-        process_missed(deletions, "deletion", concordant, split_alignments, name_indexed, options.name, te, cov/5, chrom_sizes, options.prefix)
+        print("  checking deletions")
+        process_missed(
+            deletions,
+            "deletion",
+            concordant,
+            split_alignments,
+            name_indexed,
+            options.name,
+            te,
+            cov / 5,
+            chrom_sizes,
+            options.prefix,
+        )
     else:
         pass
     if options.insertions is not False:
-        print "  checking insertions"
-        process_missed(insertions, "insertion", concordant, split_alignments, name_indexed, options.name, te, cov/10, chrom_sizes, options.prefix)
+        print("  checking insertions")
+        process_missed(
+            insertions,
+            "insertion",
+            concordant,
+            split_alignments,
+            name_indexed,
+            options.name,
+            te,
+            cov / 10,
+            chrom_sizes,
+            options.prefix,
+        )
     else:
         pass
 
@@ -259,7 +313,7 @@ def _overlap(start1, stop1, start2, stop2, d=0):
     set window size with d
     """
     d = int(d)
-    for y in xrange(start2-d, stop2+d):
+    for y in range(start2 - d, stop2 + d):
         if start1 <= y <= stop1:
             return True
         else:
@@ -284,45 +338,83 @@ def reorder(insert_file, split_outf, disc_forw, disc_rev):
     """
     Reorder columns so that TE read is in second position.
     """
-    with open(insert_file, 'r') as infile, open(split_outf, 'w+') as split_out, open(disc_forw, 'w+') as disc_forward, open(disc_rev, 'w+') as disc_reverse:
+    with (
+        open(insert_file, "r") as infile,
+        open(split_outf, "w+") as split_out,
+        open(disc_forw, "w+") as disc_forward,
+        open(disc_rev, "w+") as disc_reverse,
+    ):
         for line in infile:
             field = line.rsplit()
-            read1 = {'chrom': field[0], 'start': field[1], 'stop': field[2], 'strand': field[8]}
-            read2 = {'chrom': field[3], 'start': field[4], 'stop': field[5], 'strand': field[9]}
+            read1 = {
+                "chrom": field[0],
+                "start": field[1],
+                "stop": field[2],
+                "strand": field[8],
+            }
+            read2 = {
+                "chrom": field[3],
+                "start": field[4],
+                "stop": field[5],
+                "strand": field[9],
+            }
             sd = field[10]
-            te_coords = {'chrom': field[11], 'start': field[12], 'stop': field[13], 'strand': field[14], 'name': field[15]}
-            r1 = _overlap(int(read1['start']), int(read1['stop']), int(te_coords['start']), int(te_coords['stop']), 10)
-            r2 = _overlap(int(read2['start']), int(read2['stop']), int(te_coords['start']), int(te_coords['stop']), 10)
+            te_coords = {
+                "chrom": field[11],
+                "start": field[12],
+                "stop": field[13],
+                "strand": field[14],
+                "name": field[15],
+            }
+            r1 = _overlap(
+                int(read1["start"]),
+                int(read1["stop"]),
+                int(te_coords["start"]),
+                int(te_coords["stop"]),
+                10,
+            )
+            r2 = _overlap(
+                int(read2["start"]),
+                int(read2["stop"]),
+                int(te_coords["start"]),
+                int(te_coords["stop"]),
+                10,
+            )
             if r1 is True and r2 is False:  # find which read overlaps TE annotation
                 dna_read = read2
-                te_read = [read1['chrom'], read1['start'], read1['stop']]
+                te_read = [read1["chrom"], read1["start"], read1["stop"]]
                 mate = 2
             elif r1 is False and r2 is True:
                 dna_read = read1
-                te_read = [read2['chrom'], read2['start'], read2['stop']]
+                te_read = [read2["chrom"], read2["start"], read2["stop"]]
                 mate = 1
             elif r1 is True and r2 is True:
                 continue  # don't write to file...need to check if this works (go to next item in for loop)
             else:
                 raise Exception("Error in read cluster organization")
             # bedpe format demands chr-start-stop-chr-start-stop-strand1-strand2
-            write_string = '{chr1}\t{start1}\t{stop1}\t{chr2}\t{start2}\t{stop2}\t{strand1}\t{strand2}\t{rd}\t{te}\t{sd}\t{te_read}\n'.format(
-                chr1=dna_read['chrom'],
-                start1=dna_read['start'],
-                stop1=dna_read['stop'],
-                chr2=te_coords['chrom'],
-                start2=te_coords['start'],
-                stop2=te_coords['stop'],
-                strand1=dna_read['strand'],
-                strand2=te_coords['strand'],
+            write_string = "{chr1}\t{start1}\t{stop1}\t{chr2}\t{start2}\t{stop2}\t{strand1}\t{strand2}\t{rd}\t{te}\t{sd}\t{te_read}\n".format(
+                chr1=dna_read["chrom"],
+                start1=dna_read["start"],
+                stop1=dna_read["stop"],
+                chr2=te_coords["chrom"],
+                start2=te_coords["start"],
+                stop2=te_coords["stop"],
+                strand1=dna_read["strand"],
+                strand2=te_coords["strand"],
                 rd=field[6],
                 te=field[15],
                 sd=sd,
-                te_read='\t'.join(te_read))
-            if sd == 'disc':
-                if (mate == 1 and dna_read['strand'] == '+') or (mate == 2 and dna_read['strand'] == '-'):
+                te_read="\t".join(te_read),
+            )
+            if sd == "disc":
+                if (mate == 1 and dna_read["strand"] == "+") or (
+                    mate == 2 and dna_read["strand"] == "-"
+                ):
                     disc_forward.write(write_string)
-                elif (mate == 1 and dna_read['strand'] == '-') or (mate == 2 and dna_read['strand'] == '+'):
+                elif (mate == 1 and dna_read["strand"] == "-") or (
+                    mate == 2 and dna_read["strand"] == "+"
+                ):
                     disc_reverse.write(write_string)
             else:
                 split_out.write(write_string)
@@ -333,41 +425,70 @@ def reorder_se(insert_file, split_outf):
     For use in single-end mode
     Reorder columns so that TE read is in second position.
     """
-    with open(insert_file, 'r') as infile, open(split_outf, 'w+') as split_out:
+    with open(insert_file, "r") as infile, open(split_outf, "w+") as split_out:
         for line in infile:
             field = line.rsplit()
-            read1 = {'chrom': field[0], 'start': field[1], 'stop': field[2], 'strand': field[8]}
-            read2 = {'chrom': field[3], 'start': field[4], 'stop': field[5], 'strand': field[9]}
+            read1 = {
+                "chrom": field[0],
+                "start": field[1],
+                "stop": field[2],
+                "strand": field[8],
+            }
+            read2 = {
+                "chrom": field[3],
+                "start": field[4],
+                "stop": field[5],
+                "strand": field[9],
+            }
             sd = field[10]
-            te_coords = {'chrom': field[11], 'start': field[12], 'stop': field[13], 'strand': field[14], 'name': field[15]}
-            r1 = _overlap(int(read1['start']), int(read1['stop']), int(te_coords['start']), int(te_coords['stop']), 10)
-            r2 = _overlap(int(read2['start']), int(read2['stop']), int(te_coords['start']), int(te_coords['stop']), 10)
+            te_coords = {
+                "chrom": field[11],
+                "start": field[12],
+                "stop": field[13],
+                "strand": field[14],
+                "name": field[15],
+            }
+            r1 = _overlap(
+                int(read1["start"]),
+                int(read1["stop"]),
+                int(te_coords["start"]),
+                int(te_coords["stop"]),
+                10,
+            )
+            r2 = _overlap(
+                int(read2["start"]),
+                int(read2["stop"]),
+                int(te_coords["start"]),
+                int(te_coords["stop"]),
+                10,
+            )
             if r1 is True and r2 is False:  # find which read overlaps TE annotation
                 dna_read = read2
-                te_read = [read1['chrom'], read1['start'], read1['stop']]
+                te_read = [read1["chrom"], read1["start"], read1["stop"]]
                 mate = 2
             elif r1 is False and r2 is True:
                 dna_read = read1
-                te_read = [read2['chrom'], read2['start'], read2['stop']]
+                te_read = [read2["chrom"], read2["start"], read2["stop"]]
                 mate = 1
             elif r1 is True and r2 is True:
                 continue  # don't write to file...need to check if this works (go to next item in for loop)
             else:
                 raise Exception("Error in read cluster organization")
             # bedpe format demands chr-start-stop-chr-start-stop-strand1-strand2
-            write_string = '{chr1}\t{start1}\t{stop1}\t{chr2}\t{start2}\t{stop2}\t{strand1}\t{strand2}\t{rd}\t{te}\t{sd}\t{te_read}\n'.format(
-                chr1=dna_read['chrom'],
-                start1=dna_read['start'],
-                stop1=dna_read['stop'],
-                chr2=te_coords['chrom'],
-                start2=te_coords['start'],
-                stop2=te_coords['stop'],
-                strand1=dna_read['strand'],
-                strand2=te_coords['strand'],
+            write_string = "{chr1}\t{start1}\t{stop1}\t{chr2}\t{start2}\t{stop2}\t{strand1}\t{strand2}\t{rd}\t{te}\t{sd}\t{te_read}\n".format(
+                chr1=dna_read["chrom"],
+                start1=dna_read["start"],
+                stop1=dna_read["stop"],
+                chr2=te_coords["chrom"],
+                start2=te_coords["start"],
+                stop2=te_coords["stop"],
+                strand1=dna_read["strand"],
+                strand2=te_coords["strand"],
                 rd=field[6],
                 te=field[15],
                 sd=sd,
-                te_read='\t'.join(te_read))
+                te_read="\t".join(te_read),
+            )
             split_out.write(write_string)
 
 
@@ -380,7 +501,7 @@ def _condense_coords(coords, d):
     clusters = []  # populate list with individual cluster coordinates
     c = 1  # count number of reads in each cluster
 
-    #initialize values
+    # initialize values
     chr1 = coords[0][0]
     st1 = coords[0][1]
     sto1 = coords[0][2]
@@ -438,60 +559,74 @@ def process_merged(infile, outfile, sd):
     take merged coordinates and filter out those where multiple non-nested TEs insert into same locus
     resolve cases where insertion site is within another TE
     """
-    disc = ['disc_forward', 'disc_reverse']
-    with open(infile, 'r') as inf, open(outfile, 'w+') as outf:
+    disc = ["disc_forward", "disc_reverse"]
+    with open(infile, "r") as inf, open(outfile, "w+") as outf:
         for line in inf:
             line = line.rsplit()
-            te_chroms = line[3].split(',')
-            te_names = line[7].split(',')
-            r2_chrom = line[9].split(',')  # TE read, at end of file. Should be two clusers for split reads if TE large enough
-            r2_start = line[10].split(',')
+            te_chroms = line[3].split(",")
+            te_names = line[7].split(",")
+            r2_chrom = line[
+                9
+            ].split(
+                ","
+            )  # TE read, at end of file. Should be two clusers for split reads if TE large enough
+            r2_start = line[10].split(",")
             r2Starts = [int(x) for x in r2_start]
-            r2_stop = line[11].split(',')
+            r2_stop = line[11].split(",")
             r2Stops = [int(x) for x in r2_stop]
 
             # create list of tuples to record read positions
             r2 = []
-            for x in xrange(len(r2_chrom)):
+            for x in range(len(r2_chrom)):
                 r2.append((r2_chrom[x], r2Starts[x], r2Stops[x], te_names[x]))
             # now sort reads by chr, start
             r2 = sorted(r2, key=lambda x: (x[0], x[1]))
             r2_coords = _condense_coords(r2, 10)
 
-            starts = line[4].split(',')
+            starts = line[4].split(",")
             starts = [int(x) for x in starts]
-            stops = line[5].split(',')
+            stops = line[5].split(",")
             stops = [int(x) for x in stops]
             te_reads = []
-            for x in xrange(len(te_chroms)):
+            for x in range(len(te_chroms)):
                 te_reads.append((te_chroms[x], starts[x], stops[x], te_names[x]))
             te_reads = sorted(te_reads, key=lambda x: (x[0], x[1]))
 
             # filter where there are at least two clusters of reads in the TE if the TE length is more than 200 bp and read is split
-            if (len(r2_coords) >= 2) or sd in disc or (abs(max(stops) - min(starts) <= 200)):
+            if (
+                (len(r2_coords) >= 2)
+                or sd in disc
+                or (abs(max(stops) - min(starts) <= 200))
+            ):
                 coords = _condense_coords(te_reads, 1000)
                 if len(coords) > 1:
-                    crd, max_reads, total_smaller_clusters, dubs = get_main_cluster(coords)
-                    te_name = ','.join(crd[3])
+                    crd, max_reads, total_smaller_clusters, dubs = get_main_cluster(
+                        coords
+                    )
+                    te_name = ",".join(crd[3])
                 else:
                     crd = coords[0][0:3]
                     max_reads = coords[0][3]
-                    te_name = ','.join(coords[0][4])
+                    te_name = ",".join(coords[0][4])
                     total_smaller_clusters = 0
                     dubs = 0
                 if total_smaller_clusters >= (max_reads - 2) or dubs >= 2:
                     pass
                 else:
-                    outf.write('{ch}\t{sta}\t{stp}\t{tec}\t{tesa}\t{tesp}\t{rds}\t{nm}\t{cnt}\t{sd}\n'.format(ch=line[0],
-                                                                                                        sta=line[1],
-                                                                                                        stp=line[2],
-                                                                                                        tec=crd[0],
-                                                                                                        tesa=crd[1],
-                                                                                                        tesp=crd[2],
-                                                                                                        rds=line[6],
-                                                                                                        nm=te_name,
-                                                                                                        cnt=line[8],
-                                                                                                        sd=sd))
+                    outf.write(
+                        "{ch}\t{sta}\t{stp}\t{tec}\t{tesa}\t{tesp}\t{rds}\t{nm}\t{cnt}\t{sd}\n".format(
+                            ch=line[0],
+                            sta=line[1],
+                            stp=line[2],
+                            tec=crd[0],
+                            tesa=crd[1],
+                            tesp=crd[2],
+                            rds=line[6],
+                            nm=te_name,
+                            cnt=line[8],
+                            sd=sd,
+                        )
+                    )
             else:
                 pass
 
@@ -523,21 +658,21 @@ def process_merged_disc(infile, outfile, num_reads, max_dist, rd_len):
     collects read count information and writes to file
     filters out clusters of reads that span a distance greater than 2*(max_dist+rd_len)
     """
-    with open(infile, 'r') as inf, open(outfile, 'w+') as outf:
+    with open(infile, "r") as inf, open(outfile, "w+") as outf:
         for line in inf:
             line = line.rsplit()
             span = int(line[2]) - int(line[1])
-            max_span = (2 * (max_dist+rd_len))
-            te_chroms = line[3].split(',')
-            te_names = line[7].split(',')
+            max_span = 2 * (max_dist + rd_len)
+            te_chroms = line[3].split(",")
+            te_names = line[7].split(",")
             read_count = int(line[8])
-            read_types = line[9].split(',')
-            starts = line[4].split(',')
-            stops = line[5].split(',')
+            read_types = line[9].split(",")
+            starts = line[4].split(",")
+            stops = line[5].split(",")
             starts = [int(x) for x in starts]
             stops = [int(x) for x in stops]
             te_reads = []
-            for x in xrange(len(te_chroms)):
+            for x in range(len(te_chroms)):
                 te_reads.append((te_chroms[x], starts[x], stops[x]))
             te_reads = sorted(te_reads, key=lambda x: (x[0], x[1]))
             coords = _condense_coords(te_reads, 1000)
@@ -546,16 +681,19 @@ def process_merged_disc(infile, outfile, num_reads, max_dist, rd_len):
             else:
                 crd = coords[0][0:3]
                 if read_count >= num_reads and span < max_span:
-                    outf.write('{ch}\t{sta}\t{stp}\t{tec}\t{tesa}\t{tesp}\t{rds}\t{nm}\t{count}\n'.format(
-                        ch=line[0],
-                        sta=line[1],
-                        stp=line[2],
-                        tec=crd[0],
-                        tesa=crd[1],
-                        tesp=crd[2],
-                        rds=line[6],
-                        nm=line[7],
-                        count=line[8]))
+                    outf.write(
+                        "{ch}\t{sta}\t{stp}\t{tec}\t{tesa}\t{tesp}\t{rds}\t{nm}\t{count}\n".format(
+                            ch=line[0],
+                            sta=line[1],
+                            stp=line[2],
+                            tec=crd[0],
+                            tesa=crd[1],
+                            tesp=crd[2],
+                            rds=line[6],
+                            nm=line[7],
+                            count=line[8],
+                        )
+                    )
                 else:
                     pass
 
@@ -564,15 +702,19 @@ def separate_reads(infile, outfile, reads_file):
     """
     splits read name info into different file and adds unique IDs for insertions
     """
-    with open(infile, 'r') as inf, open(outfile, 'w+') as outf, open(reads_file, 'w+') as fasta_file:
+    with (
+        open(infile, "r") as inf,
+        open(outfile, "w+") as outf,
+        open(reads_file, "w+") as fasta_file,
+    ):
         x = 0
         for line in inf:
             line = line.rsplit()
             data = line[:6]
             name = line[7]
             reads = line[6]
-            outf.write('{data}\t{te}\t{x}\n'.format(data='\t'.join(data), te=name, x=x))
-            fasta_file.write('>{x}\t{reads}\n'.format(x=x, reads=reads))
+            outf.write("{data}\t{te}\t{x}\n".format(data="\t".join(data), te=name, x=x))
+            fasta_file.write(">{x}\t{reads}\n".format(x=x, reads=reads))
             x += 1
 
 
@@ -580,11 +722,11 @@ def filter_discordant(bam, dist, new_filename):
     """
     filters discordant reads in bamfile and writes to new bam
     """
-    bamfile = pysam.AlignmentFile(bam, 'rb')
+    bamfile = pysam.AlignmentFile(bam, "rb")
     header = bamfile.header.copy()
-    new_bam = pysam.Samfile(new_filename, 'wb', header=header)
+    new_bam = pysam.AlignmentFile(new_filename, "wb", header=header)
     for i in bamfile:
-        if abs(i.tlen) > dist or i.reference_id != i.next_reference_id:
+        if abs(i.template_length) > dist or i.reference_id != i.next_reference_id:
             new_bam.write(i)
         else:
             pass
@@ -600,7 +742,7 @@ def create_deletion_coords(bedfile, saveas):
     and less than 20 kb from each other.
     Assumes input bedfile only contains discordant reads
     """
-    with open(saveas, 'w+') as outfile:
+    with open(saveas, "w+") as outfile:
         for line in bedfile:
             chr1 = line[0]
             start1 = int(line[1])
@@ -623,12 +765,12 @@ def create_deletion_coords(bedfile, saveas):
                         start = stop2
                         stop = start1
                     gapsize = stop - start
-                    if  gapsize < 20000:
-                        outfile.write('{ch}\t{start}\t{stop}\t{read}\t{rt}\n'.format(ch=chr1,
-                                                                                     start=start,
-                                                                                     stop=stop,
-                                                                                     read=read,
-                                                                                     rt=read_type))
+                    if gapsize < 20000:
+                        outfile.write(
+                            "{ch}\t{start}\t{stop}\t{read}\t{rt}\n".format(
+                                ch=chr1, start=start, stop=stop, read=read, rt=read_type
+                            )
+                        )
                     else:
                         pass
             else:
@@ -642,7 +784,7 @@ def convert_split_pairbed(inp, outf):
     read names need to be order
     must be sorted by read name
     """
-    with open(inp, 'r') as infile, open(outf, 'w+') as outfile:
+    with open(inp, "r") as infile, open(outf, "w+") as outfile:
         i, lines = _get_len(infile)
         x = 0
         while x < i:
@@ -652,12 +794,16 @@ def convert_split_pairbed(inp, outf):
             if next_read == read:
                 mate = read[-1]
                 rd = read[:-2]
-                outfile.write("{co}\t{nco}\t{read}\t{mt}\t{st1}\t{st2}\n".format(co='\t'.join(coords),
-                                                                                 nco='\t'.join(next_coords),
-                                                                                 read=rd,
-                                                                                 mt=mate,
-                                                                                 st1=strand,
-                                                                                 st2=next_strand))
+                outfile.write(
+                    "{co}\t{nco}\t{read}\t{mt}\t{st1}\t{st2}\n".format(
+                        co="\t".join(coords),
+                        nco="\t".join(next_coords),
+                        read=rd,
+                        mt=mate,
+                        st1=strand,
+                        st2=next_strand,
+                    )
+                )
                 x += 1
             else:
                 pass
@@ -676,17 +822,17 @@ def calc_mean(bam_name, p, prefix):
     calculates mean and standard deviation insert size
     """
     check_bam(bam_name, p, prefix)
-    bam = pysam.AlignmentFile(bam_name)
+    bam = pysam.AlignmentFile(bam_name, "rb")
     lengths = []
     rd = []
     x = 0
     for i in bam:
-        if 10000 > i.tlen > 0 and i.tid == i.mrnm:
-            lengths.append(i.tlen)
+        if 10000 > i.template_length > 0 and i.reference_id == i.next_reference_id:
+            lengths.append(i.template_length)
         else:
             pass
         x += 1
-        rd.append(i.qlen)
+        rd.append(i.query_length)
         if x > 20000:
             break
     bam.close()
@@ -697,7 +843,7 @@ def calc_mean(bam_name, p, prefix):
     else:
         pass
     for item in lengths:
-        if abs(item - median) > (2. * std):
+        if abs(item - median) > (2.0 * std):
             lengths.remove(item)
         else:
             pass
@@ -708,14 +854,14 @@ def calc_cov(bam_name, start, stop):
     """
     calculates average coverage
     """
-    bam = pysam.AlignmentFile(bam_name)
+    bam = pysam.AlignmentFile(bam_name, "rb")
     # get chromosome names
     nms = []
-    for i in bam.header['SQ']:
-        if 'scaffold' in i['SN']:
+    for i in bam.header["SQ"]:
+        if "scaffold" in i["SN"]:
             pass
         else:
-            nms.append(i['SN'])
+            nms.append(i["SN"])
     x = 0
     l = 0
     for read in bam.pileup(nms[0], start, stop):
@@ -723,7 +869,7 @@ def calc_cov(bam_name, start, stop):
         l += 1
     if l > 0 and x > 0:
         bam.close()
-        return int(x/l)
+        return int(x / l)
     else:
         bam.close()
         return 0
@@ -738,12 +884,12 @@ def get_coverages(chrom, start, stop, bam, chrom_sizes):
     ustream = 0
     dstream = 0
     if chrom not in chrom_sizes.keys():
-        raise Exception('Chromosome names do not match TE annotation')
+        raise Exception("Chromosome names do not match TE annotation")
     else:
         pass
 
     if (start - 2000) > 0:
-        ustart = (start - 2000)
+        ustart = start - 2000
     else:
         ustart = 0
 
@@ -769,7 +915,7 @@ def get_coverages(chrom, start, stop, bam, chrom_sizes):
         ratio = 0
     if te > 0 and surround > 0:
         tot_te = te / l
-        ratio =  tot_te / surround
+        ratio = tot_te / surround
     elif te > 0 and surround == 0:
         ratio = 1
     else:
@@ -783,32 +929,34 @@ def check_bam(bam, p, prefix, make_new_index=False):
     returns dictionary of chromosome names and lengths
     """
     # check if sorted
-    test_head = pysam.AlignmentFile(bam, 'rb')
+    test_head = pysam.AlignmentFile(bam, "rb")
     chrom_sizes = {}
     p = str(p)
-    for i in test_head.header['SQ']:
-        chrom_sizes[i['SN']] = int(i['LN'])
+    for i in test_head.header["SQ"]:
+        chrom_sizes[i["SN"]] = int(i["LN"])
     try:
-        test_head.header['HD']['SO']
+        test_head.header["HD"]["SO"]
     except KeyError:
-        print '  sorting bam file'
-        pysam.sort('-@', p, bam, prefix + 'sorted.temp')
+        print("  sorting bam file")
+        pysam.sort("-@", p, "-o", prefix + "sorted.temp.bam", bam, catch_stdout=False)
         os.remove(bam)
-        os.rename(prefix + 'sorted.temp.bam', bam)
+        os.rename(prefix + "sorted.temp.bam", bam)
     else:
-        if test_head.header['HD']['SO'] == 'coordinate':
+        if test_head.header["HD"]["SO"] == "coordinate":
             pass
         else:
-            print '  sorting bam file'
-            pysam.sort('-@', p, bam, prefix + 'sorted.temp')
+            print("  sorting bam file")
+            pysam.sort(
+                "-@", p, "-o", prefix + "sorted.temp.bam", bam, catch_stdout=False
+            )
             os.remove(bam)
-            os.rename(prefix + 'sorted.temp.bam', bam)
+            os.rename(prefix + "sorted.temp.bam", bam)
     test_head.close()
     # check if indexed
-    if '{}.bai'.format(bam) in os.listdir('.') and make_new_index is False:
+    if "{}.bai".format(bam) in os.listdir(".") and make_new_index is False:
         pass
     else:
-        print '  indexing bam file'
+        print("  indexing bam file")
         pysam.index(bam)
     return chrom_sizes
 
@@ -826,41 +974,62 @@ def annotate_deletions(inp, acc, num_reads, bam, mn, p, te_file, prefix):
     tes = {}
     written_tes = []
     chrom_sizes = check_bam(bam, p, prefix)
-    allreads = pysam.AlignmentFile(bam, 'rb')
+    allreads = pysam.AlignmentFile(bam, "rb")
 
-    with open(inp, 'r') as infile, open('deletions_{}.bed'.format(acc), 'w+') as outfile, open('deletion_reads_{}.txt'.format(acc), 'w+') as deletions_reads:
+    with (
+        open(inp, "r") as infile,
+        open("deletions_{}.bed".format(acc), "w+") as outfile,
+        open("deletion_reads_{}.txt".format(acc), "w+") as deletions_reads,
+    ):
         for line in infile:
             line = line.rsplit()
             coords = [line[0], int(line[1]), int(line[2])]  # chr, start, stop
-            te = [line[5], line[6], line[7], line[8], line[9]]  # chr, start, stop, strand, name
+            te = [
+                line[5],
+                line[6],
+                line[7],
+                line[8],
+                line[9],
+            ]  # chr, start, stop, strand, name
             name = te[4]
             length = int(te[2]) - int(te[1])
             gapsize = coords[2] - coords[1]
             read_type = line[4]
             read_name = line[3]
-            if (gapsize <= 0) or (name in written_tes) or ((length-mn) > gapsize):
+            if (gapsize <= 0) or (name in written_tes) or ((length - mn) > gapsize):
                 pass
             else:
                 if name not in tes.keys():  # first time seeing this TE, add to dict
-                    cov = get_coverages(coords[0], coords[1], coords[2], allreads, chrom_sizes)
-                    tes[name] = [cov, 0, 0, [read_name]]  # coverage, split, disc, read_name (list)
+                    cov = get_coverages(
+                        coords[0], coords[1], coords[2], allreads, chrom_sizes
+                    )
+                    tes[name] = [
+                        cov,
+                        0,
+                        0,
+                        [read_name],
+                    ]  # coverage, split, disc, read_name (list)
                 else:
                     pass
-                if read_type == 'split':
+                if read_type == "split":
                     tes[name][1] += 1
                     tes[name][3].append(read_name)
-                elif read_type == 'disc':
+                elif read_type == "disc":
                     tes[name][2] += 1
                     tes[name][3].append(read_name)
                 else:
-                    raise Exception('Incorrect read type information')
+                    raise Exception("Incorrect read type information")
                 split = tes[name][1]
                 disc = tes[name][2]
                 total_reads = split + disc
-                if (tes[name][0] <= 0.1 and total_reads >= num_reads/2) or (total_reads >= num_reads):
+                if (tes[name][0] <= 0.1 and total_reads >= num_reads / 2) or (
+                    total_reads >= num_reads
+                ):
                     data = (str(a) for a in te)
-                    outfile.write('{te}\t{id}\n'.format(te='\t'.join(data), id=str(x)))
-                    deletions_reads.write(">" + str(x) + "\t" + ",".join(tes[name][3]) + "\n")
+                    outfile.write("{te}\t{id}\n".format(te="\t".join(data), id=str(x)))
+                    deletions_reads.write(
+                        ">" + str(x) + "\t" + ",".join(tes[name][3]) + "\n"
+                    )
                     x += 1
                     written_tes.append(name)
                 else:
@@ -876,13 +1045,23 @@ def annotate_deletions_se(inp, acc, num_reads, bam, p, te_file, prefix):
     tes = {}
     written_tes = []
     chrom_sizes = check_bam(bam, p, prefix)
-    allreads = pysam.AlignmentFile(bam, 'rb')
+    allreads = pysam.AlignmentFile(bam, "rb")
 
-    with open(inp, 'r') as infile, open('deletions_{}.bed'.format(acc), 'w+') as outfile, open('deletion_reads_{}.txt'.format(acc), 'w+') as deletions_reads:
+    with (
+        open(inp, "r") as infile,
+        open("deletions_{}.bed".format(acc), "w+") as outfile,
+        open("deletion_reads_{}.txt".format(acc), "w+") as deletions_reads,
+    ):
         for line in infile:
             line = line.rsplit()
             coords = [line[0], int(line[1]), int(line[2])]  # chr, start, stop
-            te = [line[5], line[6], line[7], line[8], line[9]]  # chr, start, stop, strand, name
+            te = [
+                line[5],
+                line[6],
+                line[7],
+                line[8],
+                line[9],
+            ]  # chr, start, stop, strand, name
             name = te[4]
             length = int(te[2]) - int(te[1])
             gapsize = coords[2] - coords[1]
@@ -892,20 +1071,30 @@ def annotate_deletions_se(inp, acc, num_reads, bam, p, te_file, prefix):
                 pass
             else:
                 if name not in tes.keys():  # first time seeing this TE, add to dict
-                    cov = get_coverages(coords[0], coords[1], coords[2], allreads, chrom_sizes)
-                    tes[name] = [cov, 0, [read_name]]  # coverage, split, disc, read_name (list)
+                    cov = get_coverages(
+                        coords[0], coords[1], coords[2], allreads, chrom_sizes
+                    )
+                    tes[name] = [
+                        cov,
+                        0,
+                        [read_name],
+                    ]  # coverage, split, disc, read_name (list)
                 else:
                     pass
-                if read_type == 'split':
+                if read_type == "split":
                     tes[name][1] += 1
                     tes[name][2].append(read_name)
                 else:
-                    raise Exception('Incorrect read type information')
+                    raise Exception("Incorrect read type information")
                 total_reads = tes[name][1]
-                if (tes[name][0] <= 0.1 and total_reads >= num_reads/2) or (total_reads >= num_reads):
+                if (tes[name][0] <= 0.1 and total_reads >= num_reads / 2) or (
+                    total_reads >= num_reads
+                ):
                     data = (str(a) for a in te)
-                    outfile.write('{te}\t{id}\n'.format(te='\t'.join(data), id=str(x)))
-                    deletions_reads.write(">" + str(x) + "\t" + ",".join(tes[name][2]) + "\n")
+                    outfile.write("{te}\t{id}\n".format(te="\t".join(data), id=str(x)))
+                    deletions_reads.write(
+                        ">" + str(x) + "\t" + ",".join(tes[name][2]) + "\n"
+                    )
                     x += 1
                     written_tes.append(name)
                 else:
@@ -927,8 +1116,8 @@ def condense_names(feature):
     use in pybedtools.each()
     """
     feature = feature[:-1]
-    names = set(feature[-1].split(','))
-    names = ','.join(names)
+    names = set(feature[-1].split(","))
+    names = ",".join(names)
     feature[-1] = names
     return feature
 
@@ -943,14 +1132,29 @@ def reorder_intersections(feature, read_count):
     techrom = feature[13]
     testart = feature[14]
     testop = feature[15]
-    reads = set(feature[6].split(',') + feature[16].split(','))
-    names = set(feature[7].split(',') + feature[17].split(','))
+    reads = set(feature[6].split(",") + feature[16].split(","))
+    names = set(feature[7].split(",") + feature[17].split(","))
     disc_reads = int(feature[8])
     split_reads = int(feature[-2])
     total_reads = disc_reads + split_reads
     if total_reads >= int(read_count):
-        if feature[3] == feature[13] and _overlap(int(feature[4]), int(feature[5]), int(feature[14]), int(feature[15]), 10) is True:
-            feature = [chrom, start, stop, techrom, testart, testop, ','.join(reads), ','.join(names)]
+        if (
+            feature[3] == feature[13]
+            and _overlap(
+                int(feature[4]), int(feature[5]), int(feature[14]), int(feature[15]), 10
+            )
+            is True
+        ):
+            feature = [
+                chrom,
+                start,
+                stop,
+                techrom,
+                testart,
+                testop,
+                ",".join(reads),
+                ",".join(names),
+            ]
             return feature
         else:
             pass
@@ -962,36 +1166,41 @@ def check_name_sorted(bam, p, prefix):
     """
     Sort bam file by name if position sorted
     """
-    test_head = pysam.AlignmentFile(bam, 'rb')
+    test_head = pysam.AlignmentFile(bam, "rb")
     p = str(p)
     try:
-        test_head.header['HD']['SO']
+        test_head.header["HD"]["SO"]
     except KeyError:
-        print '  sorting bam file'
-        pysam.sort('-@', p, '-n', bam, prefix + 'sorted.temp')
+        print("  sorting bam file")
+        pysam.sort(
+            "-@", p, "-n", "-o", prefix + "sorted.temp.bam", bam, catch_stdout=False
+        )
         os.remove(bam)
-        os.rename(prefix + 'sorted.temp.bam', bam)
+        os.rename(prefix + "sorted.temp.bam", bam)
     else:
-        if test_head.header['HD']['SO'] == 'queryname':
+        if test_head.header["HD"]["SO"] == "queryname":
             pass
         else:
-            print '  sorting bam file'
-            pysam.sort('-@', p, '-n', bam, prefix + 'sorted.temp')
+            print("  sorting bam file")
+            pysam.sort(
+                "-@", p, "-n", "-o", prefix + "sorted.temp.bam", bam, catch_stdout=False
+            )
             os.remove(bam)
-            os.rename(prefix + 'sorted.temp.bam', bam)
+            os.rename(prefix + "sorted.temp.bam", bam)
     test_head.close()
 
 
 def merge_bed(infile, outfile, options):
     if os.path.exists(infile) and os.path.getsize(infile) > 0:
-        pybedtools.BedTool(infile).sort().merge(c='4,5,6,9,10,11,12,13,14',
-                                              o='collapse,collapse,collapse,distinct,collapse,count,collapse,collapse,collapse')\
-        .saveas(outfile)
-        return(0)
+        pybedtools.BedTool(infile).sort().merge(
+            c="4,5,6,9,10,11,12,13,14",
+            o="collapse,collapse,collapse,distinct,collapse,count,collapse,collapse,collapse",
+        ).saveas(outfile)
+        return 0
     else:
-        print "Error: no reads intersecting TEs found"
+        print("Error: no reads intersecting TEs found")
         remove_temp(options)
-        return(1)
+        return 1
 
 
 def discover_pe(options):
@@ -1002,122 +1211,251 @@ def discover_pe(options):
     imput split reads bam file must be name sorted
     TE annotation can be gzipped
     """
-    print "Processing "+options.name
-    print "Running paired-end mode"
-    print 'Estimating mean insert size and coverage'
+    print("Processing " + options.name)
+    print("Running paired-end mode")
+    print("Estimating mean insert size and coverage")
     mn, std, rd_len = calc_mean(options.conc, options.proc, options.prefix)
     cov = calc_cov(options.conc, 100000, 120000)
     if cov <= 10:
-        print '  Warning: coverage may not be sufficiently high to reliably discover polymorphic TE insertions'
+        print(
+            "  Warning: coverage may not be sufficiently high to reliably discover polymorphic TE insertions"
+        )
     else:
         pass
-    max_dist = (4*std) + mn
-    print '\tmean insert size = {ins} bp, standard deviation = {std} bp\n\tcoverage = {cov}x\n\tread length = {rd} bp'.format(
-        ins=mn, std=std, cov=cov, rd=rd_len)
-    with open("tepid_discover_log_{}.txt".format(options.name), 'w+') as logfile:
-        logfile.write('''Sample {sample}\nStart time {time}\nUsing TE annotation at {path}\nmean insert size = {ins} bp, standard deviation = {std} bp\ncoverage = {cov}x\nread length = {rd} bp\n'''.format(
-                sample=options.name, time=ctime(),
-                path=options.te, ins=mn, std=std, cov=cov, rd=rd_len))
+    max_dist = (4 * std) + mn
+    print(
+        "\tmean insert size = {ins} bp, standard deviation = {std} bp\n\tcoverage = {cov}x\n\tread length = {rd} bp".format(
+            ins=mn, std=std, cov=cov, rd=rd_len
+        )
+    )
+    with open("tepid_discover_log_{}.txt".format(options.name), "w+") as logfile:
+        logfile.write(
+            """Sample {sample}\nStart time {time}\nUsing TE annotation at {path}\nmean insert size = {ins} bp, standard deviation = {std} bp\ncoverage = {cov}x\nread length = {rd} bp\n""".format(
+                sample=options.name,
+                time=ctime(),
+                path=options.te,
+                ins=mn,
+                std=std,
+                cov=cov,
+                rd=rd_len,
+            )
+        )
 
-    mask_chroms = options.mask.split(',')
+    mask_chroms = options.mask.split(",")
 
     if options.strict is True:
-        deletion_reads = int(cov/5) if (int(cov/5) > 10) else 10
-        insertion_reads_low = int(cov/5) if (int(cov/5) > 10) else 10
-        insertion_reads_high = int(cov/2) if (int(cov/2) > 10) else 10
+        deletion_reads = int(cov / 5) if (int(cov / 5) > 10) else 10
+        insertion_reads_low = int(cov / 5) if (int(cov / 5) > 10) else 10
+        insertion_reads_high = int(cov / 2) if (int(cov / 2) > 10) else 10
         quality_filter_ins = 10
         quality_filter_dels = 10
     else:
-        deletion_reads = int(cov/5) if (int(cov/5) > 4) else 4
-        insertion_reads_low = int(cov/10) if (int(cov/10) > 2) else 2
-        insertion_reads_high = int(cov/5) if (int(cov/5) > 2) else 2
+        deletion_reads = int(cov / 5) if (int(cov / 5) > 4) else 4
+        insertion_reads_low = int(cov / 10) if (int(cov / 10) > 2) else 2
+        insertion_reads_high = int(cov / 5) if (int(cov / 5) > 2) else 2
         quality_filter_ins = 5
         quality_filter_dels = 0
 
-    print 'Processing split reads'
+    print("Processing split reads")
     check_name_sorted(options.split, options.proc, options.prefix)
-    split_unfiltered = pybedtools.BedTool(options.split).bam_to_bed().saveas().filter(lambda x: x[0] not in mask_chroms).saveas()
-    split_unfiltered.filter(lambda x: int(x[4]) >= quality_filter_ins).saveas(options.prefix + 'split_hq.temp')
-    split_unfiltered.filter(lambda x: int(x[4]) >= quality_filter_dels).saveas(options.prefix +'split.temp')
-    convert_split_pairbed(options.prefix + 'split_hq.temp', options.prefix + 'split_hq_bedpe.temp')
-    convert_split_pairbed(options.prefix + 'split.temp',options.prefix + 'split_bedpe.temp')
-    split_bedpe = pybedtools.BedTool(options.prefix + 'split_hq_bedpe.temp').each(append_origin, word='split').saveas().sort()
-    split_bedpe_dels = pybedtools.BedTool(options.prefix + 'split_bedpe.temp').each(append_origin, word='split').saveas().sort()
-    split_ins = split_bedpe.filter(lambda x: (abs(int(x[1]) - int(x[4])) > 5000) or (x[0] != x[3])).saveas()
+    split_unfiltered = (
+        pybedtools.BedTool(options.split)
+        .bam_to_bed()
+        .saveas()
+        .filter(lambda x: x[0] not in mask_chroms)
+        .saveas()
+    )
+    split_unfiltered.filter(lambda x: int(x[4]) >= quality_filter_ins).saveas(
+        options.prefix + "split_hq.temp"
+    )
+    split_unfiltered.filter(lambda x: int(x[4]) >= quality_filter_dels).saveas(
+        options.prefix + "split.temp"
+    )
+    convert_split_pairbed(
+        options.prefix + "split_hq.temp", options.prefix + "split_hq_bedpe.temp"
+    )
+    convert_split_pairbed(
+        options.prefix + "split.temp", options.prefix + "split_bedpe.temp"
+    )
+    split_bedpe = (
+        pybedtools.BedTool(options.prefix + "split_hq_bedpe.temp")
+        .each(append_origin, word="split")
+        .saveas()
+        .sort()
+    )
+    split_bedpe_dels = (
+        pybedtools.BedTool(options.prefix + "split_bedpe.temp")
+        .each(append_origin, word="split")
+        .saveas()
+        .sort()
+    )
+    split_ins = split_bedpe.filter(
+        lambda x: (abs(int(x[1]) - int(x[4])) > 5000) or (x[0] != x[3])
+    ).saveas()
 
     if options.discordant is False:
-        print 'Finding discordant reads'
-        filter_discordant(options.conc, max_dist, options.prefix + 'disc_bam.temp')
-        pysam.sort('-@', str(options.proc), '-n', options.prefix + 'disc_bam.temp', options.prefix + 'disc_sorted')
-        disc = pybedtools.BedTool(options.prefix + 'disc_sorted.bam')\
-        .bam_to_bed(bedpe=True, mate1=True)\
-        .filter(lambda x: x[0] not in mask_chroms).saveas()\
-        .each(append_origin, word='disc').saveas()
+        print("Finding discordant reads")
+        filter_discordant(options.conc, max_dist, options.prefix + "disc_bam.temp")
+        pysam.sort(
+            "-@",
+            str(options.proc),
+            "-n",
+            "-o",
+            options.prefix + "disc_sorted.bam",
+            options.prefix + "disc_bam.temp",
+            catch_stdout=False,
+        )
+        disc = (
+            pybedtools.BedTool(options.prefix + "disc_sorted.bam")
+            .bam_to_bed(bedpe=True, mate1=True)
+            .filter(lambda x: x[0] not in mask_chroms)
+            .saveas()
+            .each(append_origin, word="disc")
+            .saveas()
+        )
     else:
         check_bam(options.discordant, options.proc, options.prefix)
-        disc = pybedtools.BedTool(options.discordant)\
-        .bam_to_bed(bedpe=True, mate1=True)\
-        .filter(lambda x: x[0] not in mask_chroms).saveas()\
-        .each(append_origin, word='disc').saveas()
-    disc_split_dels = split_bedpe_dels.cat(disc, postmerge=False).sort().saveas(options.prefix + 'disc_split_dels.temp')
-    disc_split_ins = split_ins.cat(disc, postmerge=False).sort().saveas(options.prefix + 'disc_split_ins.temp')
+        disc = (
+            pybedtools.BedTool(options.discordant)
+            .bam_to_bed(bedpe=True, mate1=True)
+            .filter(lambda x: x[0] not in mask_chroms)
+            .saveas()
+            .each(append_origin, word="disc")
+            .saveas()
+        )
+    disc_split_dels = (
+        split_bedpe_dels.cat(disc, postmerge=False)
+        .sort()
+        .saveas(options.prefix + "disc_split_dels.temp")
+    )
+    disc_split_ins = (
+        split_ins.cat(disc, postmerge=False)
+        .sort()
+        .saveas(options.prefix + "disc_split_ins.temp")
+    )
 
-    print 'Processing TE annotation'
+    print("Processing TE annotation")
     te = pybedtools.BedTool(options.te).sort()
-    disc_split_ins.pair_to_bed(te, f=0.80).saveas(options.prefix + 'intersect_ins.temp')
+    disc_split_ins.pair_to_bed(te, f=0.80).saveas(options.prefix + "intersect_ins.temp")
 
     if options.insertions is True:  # finding insertions only, so skip deletions
         pass
     else:
-        print 'Finding deletions'
-        create_deletion_coords(disc_split_dels, options.prefix + 'del_coords.temp')
-        dels = pybedtools.BedTool(options.prefix + 'del_coords.temp').sort()
+        print("Finding deletions")
+        create_deletion_coords(disc_split_dels, options.prefix + "del_coords.temp")
+        dels = pybedtools.BedTool(options.prefix + "del_coords.temp").sort()
         merged_te = te.merge()
         dels = dels.intersect(merged_te, f=0.8, wa=True)
-        dels.intersect(te, F=0.8, sorted=True, wb=True, nonamecheck=True).sort().saveas(options.prefix + 'deletions.temp')
-        annotate_deletions(options.prefix + 'deletions.temp', options.name, deletion_reads, options.conc, mn, str(options.proc), te, options.prefix)
+        dels.intersect(te, F=0.8, sorted=True, wb=True, nonamecheck=True).sort().saveas(
+            options.prefix + "deletions.temp"
+        )
+        annotate_deletions(
+            options.prefix + "deletions.temp",
+            options.name,
+            deletion_reads,
+            options.conc,
+            mn,
+            str(options.proc),
+            te,
+            options.prefix,
+        )
 
     if options.deletions is True:  # finding deletions only, so skip insertions
         pass
     else:
-        print 'Finding insertions'
-        reorder(options.prefix + 'intersect_ins.temp', options.prefix + 'reorder_split.temp', options.prefix + 'forward_disc.temp', options.prefix + 'reverse_disc.temp')
+        print("Finding insertions")
+        reorder(
+            options.prefix + "intersect_ins.temp",
+            options.prefix + "reorder_split.temp",
+            options.prefix + "forward_disc.temp",
+            options.prefix + "reverse_disc.temp",
+        )
 
-        file_pairs = [[options.prefix + 'reorder_split.temp', options.prefix + 'split_merged.temp'],
-                      [options.prefix + 'forward_disc.temp', options.prefix + 'forward_merged.temp'],
-                      [options.prefix + 'reverse_disc.temp', options.prefix + 'reverse_merged.temp']]
-        
-        for x in xrange(3):
+        file_pairs = [
+            [
+                options.prefix + "reorder_split.temp",
+                options.prefix + "split_merged.temp",
+            ],
+            [
+                options.prefix + "forward_disc.temp",
+                options.prefix + "forward_merged.temp",
+            ],
+            [
+                options.prefix + "reverse_disc.temp",
+                options.prefix + "reverse_merged.temp",
+            ],
+        ]
+
+        for x in range(3):
             status = merge_bed(file_pairs[x][0], file_pairs[x][1], options)
             if status == 1:
-                return(1)
+                return 1
 
-        info = [[options.prefix + 'split_merged.temp', options.prefix + 'split_processed.temp', 'split'],
-                [options.prefix + 'forward_merged.temp', options.prefix + 'forward_processed.temp', 'disc_forward'],
-                [options.prefix + 'reverse_merged.temp', options.prefix + 'reverse_processed.temp', 'disc_reverse']]
+        info = [
+            [
+                options.prefix + "split_merged.temp",
+                options.prefix + "split_processed.temp",
+                "split",
+            ],
+            [
+                options.prefix + "forward_merged.temp",
+                options.prefix + "forward_processed.temp",
+                "disc_forward",
+            ],
+            [
+                options.prefix + "reverse_merged.temp",
+                options.prefix + "reverse_processed.temp",
+                "disc_reverse",
+            ],
+        ]
 
-        for x in xrange(3):
+        for x in range(3):
             process_merged(info[x][0], info[x][1], info[x][2])
 
-        pybedtools.BedTool(options.prefix + 'forward_processed.temp').cat(options.prefix + 'reverse_processed.temp', postmerge=True,
-            c='4,5,6,7,8,9,10',
-            o='collapse,collapse,collapse,distinct,distinct,sum,distinct',
-            d='200').sort().saveas(options.prefix + 'condensed_disc.temp')
+        pybedtools.BedTool(options.prefix + "forward_processed.temp").cat(
+            options.prefix + "reverse_processed.temp",
+            postmerge=True,
+            c="4,5,6,7,8,9,10",
+            o="collapse,collapse,collapse,distinct,distinct,sum,distinct",
+            d="200",
+        ).sort().saveas(options.prefix + "condensed_disc.temp")
 
-        process_merged_disc(options.prefix + 'condensed_disc.temp', options.prefix + 'processed_disc.temp', 2, (mn+std), rd_len)
-        pybedtools.BedTool(options.prefix + 'split_processed.temp').filter(lambda x: insertion_reads_high <= int(x[8])).saveas().each(lambda x: x[:-2]).moveto(options.prefix + 'high.temp')
-        disc_split = pybedtools.BedTool(options.prefix + 'split_processed.temp')\
-        .filter(lambda x: insertion_reads_high > int(x[8]))\
-        .saveas().sort()\
-        .intersect(options.prefix + 'processed_disc.temp', wo=True, nonamecheck=True)\
-        .each(reorder_intersections, read_count=insertion_reads_low).saveas().sort().saveas()
+        process_merged_disc(
+            options.prefix + "condensed_disc.temp",
+            options.prefix + "processed_disc.temp",
+            2,
+            (mn + std),
+            rd_len,
+        )
+        pybedtools.BedTool(options.prefix + "split_processed.temp").filter(
+            lambda x: insertion_reads_high <= int(x[8])
+        ).saveas().each(lambda x: x[:-2]).moveto(options.prefix + "high.temp")
+        disc_split = (
+            pybedtools.BedTool(options.prefix + "split_processed.temp")
+            .filter(lambda x: insertion_reads_high > int(x[8]))
+            .saveas()
+            .sort()
+            .intersect(
+                options.prefix + "processed_disc.temp", wo=True, nonamecheck=True
+            )
+            .each(reorder_intersections, read_count=insertion_reads_low)
+            .saveas()
+            .sort()
+            .saveas()
+        )
         if len(disc_split) > 0:
-            disc_split.cat(options.prefix + 'high.temp', postmerge=False).saveas().sort().saveas().moveto(options.prefix + 'insertions.temp')
-            nm = options.prefix + 'insertions.temp'
+            disc_split.cat(
+                options.prefix + "high.temp", postmerge=False
+            ).saveas().sort().saveas().moveto(options.prefix + "insertions.temp")
+            nm = options.prefix + "insertions.temp"
         else:
-            nm = options.prefix + 'high.temp'
-        separate_reads(nm, 'insertions_{}.bed'.format(options.name), 'insertion_reads_{}.txt'.format(options.name))
-    with open("tepid_discover_log_{}.txt".format(options.name), 'a') as logfile:
+            nm = options.prefix + "high.temp"
+        separate_reads(
+            nm,
+            "insertions_{}.bed".format(options.name),
+            "insertion_reads_{}.txt".format(options.name),
+        )
+    with open("tepid_discover_log_{}.txt".format(options.name), "a") as logfile:
         logfile.write("tepid-discover finished normally at {}\n".format(ctime()))
 
     remove_temp(options)
@@ -1125,11 +1463,11 @@ def discover_pe(options):
 
 def remove_temp(options):
     if options.keep is False:
-        temp = glob('./*.temp')
+        temp = glob("./*.temp")
         mytempfiles = [x for x in temp if x.startswith(options.prefix)]
         for i in mytempfiles:
             os.remove(i)
-        os.remove(options.prefix + 'disc_sorted.bam')
+        os.remove(options.prefix + "disc_sorted.bam")
 
 
 def calc_read_length(bam):
@@ -1139,92 +1477,151 @@ def calc_read_length(bam):
     lengths = []
     bamfile = pysam.AlignmentFile(bam, "rb")
     nms = []
-    for i in bamfile.header['SQ']:
-        if 'scaffold' in i['SN']:
+    for i in bamfile.header["SQ"]:
+        if "scaffold" in i["SN"]:
             pass
         else:
-            nms.append(i['SN'])
+            nms.append(i["SN"])
     for read in bamfile.fetch(nms[0], 1, 10000):
-        lengths.append(read.alen)
+        lengths.append(read.reference_length)
     bamfile.close()
     av_len = int(sum(lengths) / len(lengths))
-    return(av_len)
+    return av_len
 
 
 def discover_se(options):
     """
     Single-end mode
     """
-    print "Processing "+options.name
-    print "Running single-end mode"
+    print("Processing " + options.name)
+    print("Running single-end mode")
     cov = calc_cov(options.conc, 100000, 120000)
     rd_len = calc_read_length(options.conc)
     if cov <= 10:
-        print '  Warning: coverage may not be sufficiently high to reliably discover polymorphic TE insertions'
+        print(
+            "  Warning: coverage may not be sufficiently high to reliably discover polymorphic TE insertions"
+        )
     else:
         pass
-    print '\tcoverage = {cov}x\n\taverage read length = {rd} bp'.format(
-        cov=cov, rd=rd_len)
-    with open("tepid_discover_log_{}.txt".format(options.name), 'w+') as logfile:
-        logfile.write('''Sample {sample}\nStart time {time}\nUsing TE annotation at {path}\ncoverage = {cov}x\nread length = {rd} bp\n'''.format(
-                sample=options.name, time=ctime(),
-                path=options.te, cov=cov, rd=rd_len))
+    print(
+        "\tcoverage = {cov}x\n\taverage read length = {rd} bp".format(
+            cov=cov, rd=rd_len
+        )
+    )
+    with open("tepid_discover_log_{}.txt".format(options.name), "w+") as logfile:
+        logfile.write(
+            """Sample {sample}\nStart time {time}\nUsing TE annotation at {path}\ncoverage = {cov}x\nread length = {rd} bp\n""".format(
+                sample=options.name, time=ctime(), path=options.te, cov=cov, rd=rd_len
+            )
+        )
 
-    mask_chroms = options.mask.split(',')
+    mask_chroms = options.mask.split(",")
 
     if options.strict is True:
-        deletion_reads = int(cov/5) if (int(cov/5) > 10) else 10
-        insertion_reads_low = int(cov/5) if (int(cov/5) > 10) else 10
-        insertion_reads_high = int(cov/2) if (int(cov/2) > 10) else 10
+        deletion_reads = int(cov / 5) if (int(cov / 5) > 10) else 10
+        insertion_reads_low = int(cov / 5) if (int(cov / 5) > 10) else 10
+        insertion_reads_high = int(cov / 2) if (int(cov / 2) > 10) else 10
         quality_filter_ins = 10
         quality_filter_dels = 10
     else:
-        deletion_reads = int(cov/10) if (int(cov/10) > 4) else 4
-        insertion_reads_low = int(cov/10) if (int(cov/10) > 2) else 2
-        insertion_reads_high = int(cov/5) if (int(cov/5) > 2) else 2
+        deletion_reads = int(cov / 10) if (int(cov / 10) > 4) else 4
+        insertion_reads_low = int(cov / 10) if (int(cov / 10) > 2) else 2
+        insertion_reads_high = int(cov / 5) if (int(cov / 5) > 2) else 2
         quality_filter_ins = 5
         quality_filter_dels = 0
 
-    print 'Processing split reads'
+    print("Processing split reads")
     check_name_sorted(options.split, options.proc, options.prefix)
-    split_unfiltered = pybedtools.BedTool(options.split).bam_to_bed().saveas().filter(lambda x: x[0] not in mask_chroms).saveas()
-    split_unfiltered.filter(lambda x: int(x[4]) >= quality_filter_ins).saveas(options.prefix + 'split_hq.temp')
-    split_unfiltered.filter(lambda x: int(x[4]) >= quality_filter_dels).saveas(options.prefix + 'split.temp')
-    convert_split_pairbed(options.prefix + 'split_hq.temp', options.prefix + 'split_hq_bedpe.temp')
-    convert_split_pairbed(options.prefix + 'split.temp', options.prefix + 'split_bedpe.temp')
-    split_bedpe = pybedtools.BedTool(options.prefix + 'split_hq_bedpe.temp').each(append_origin, word='split').saveas().sort()
-    split_bedpe_dels = pybedtools.BedTool(options.prefix + 'split_bedpe.temp').each(append_origin, word='split').saveas().sort()
-    split_ins = split_bedpe.filter(lambda x: (abs(int(x[1]) - int(x[4])) > 5000) or (x[0] != x[3])).saveas()
+    split_unfiltered = (
+        pybedtools.BedTool(options.split)
+        .bam_to_bed()
+        .saveas()
+        .filter(lambda x: x[0] not in mask_chroms)
+        .saveas()
+    )
+    split_unfiltered.filter(lambda x: int(x[4]) >= quality_filter_ins).saveas(
+        options.prefix + "split_hq.temp"
+    )
+    split_unfiltered.filter(lambda x: int(x[4]) >= quality_filter_dels).saveas(
+        options.prefix + "split.temp"
+    )
+    convert_split_pairbed(
+        options.prefix + "split_hq.temp", options.prefix + "split_hq_bedpe.temp"
+    )
+    convert_split_pairbed(
+        options.prefix + "split.temp", options.prefix + "split_bedpe.temp"
+    )
+    split_bedpe = (
+        pybedtools.BedTool(options.prefix + "split_hq_bedpe.temp")
+        .each(append_origin, word="split")
+        .saveas()
+        .sort()
+    )
+    split_bedpe_dels = (
+        pybedtools.BedTool(options.prefix + "split_bedpe.temp")
+        .each(append_origin, word="split")
+        .saveas()
+        .sort()
+    )
+    split_ins = split_bedpe.filter(
+        lambda x: (abs(int(x[1]) - int(x[4])) > 5000) or (x[0] != x[3])
+    ).saveas()
 
-    print 'Processing TE annotation'
+    print("Processing TE annotation")
     te = pybedtools.BedTool(options.te).sort()
-    split_ins.pair_to_bed(te, f=0.80).saveas(options.prefix + 'intersect_ins.temp')
+    split_ins.pair_to_bed(te, f=0.80).saveas(options.prefix + "intersect_ins.temp")
 
     if options.insertions is True:  # finding insertions only, so skip deletions
         pass
     else:
-        print 'Finding deletions'
-        create_deletion_coords(split_bedpe_dels, options.prefix + 'del_coords.temp')
-        dels = pybedtools.BedTool(options.prefix + 'del_coords.temp').sort()
+        print("Finding deletions")
+        create_deletion_coords(split_bedpe_dels, options.prefix + "del_coords.temp")
+        dels = pybedtools.BedTool(options.prefix + "del_coords.temp").sort()
         merged_te = te.merge()
         dels = dels.intersect(merged_te, f=0.8, wa=True)
-        dels.intersect(te, F=0.8, sorted=True, wb=True, nonamecheck=True).sort().saveas(options.prefix + 'deletions.temp')
+        dels.intersect(te, F=0.8, sorted=True, wb=True, nonamecheck=True).sort().saveas(
+            options.prefix + "deletions.temp"
+        )
         # works without the discordant reads
-        annotate_deletions_se(options.prefix + 'deletions.temp', options.name, deletion_reads, options.conc, str(options.proc), te, options.prefix)
+        annotate_deletions_se(
+            options.prefix + "deletions.temp",
+            options.name,
+            deletion_reads,
+            options.conc,
+            str(options.proc),
+            te,
+            options.prefix,
+        )
 
     if options.deletions is True:  # finding deletions only, so skip insertions
         pass
     else:
-        print 'Finding insertions'
-        reorder_se(options.prefix + 'intersect_ins.temp', options.prefix + 'reorder_split.temp')
-        status = merge_bed(options.prefix + 'reorder_split.temp',options.prefix + 'split_merged.temp', options)
+        print("Finding insertions")
+        reorder_se(
+            options.prefix + "intersect_ins.temp", options.prefix + "reorder_split.temp"
+        )
+        status = merge_bed(
+            options.prefix + "reorder_split.temp",
+            options.prefix + "split_merged.temp",
+            options,
+        )
         if status == 1:
-            return(1)
-        process_merged(options.prefix + 'split_merged.temp', options.prefix + 'split_processed.temp', 'split')
+            return 1
+        process_merged(
+            options.prefix + "split_merged.temp",
+            options.prefix + "split_processed.temp",
+            "split",
+        )
 
-        pybedtools.BedTool(options.prefix + 'split_processed.temp').filter(lambda x: insertion_reads_high <= int(x[8])).saveas().each(lambda x: x[:-2]).moveto(options.prefix + 'high.temp')
-        separate_reads(options.prefix + "high.temp", 'insertions_{}.bed'.format(options.name), 'insertion_reads_{}.txt'.format(options.name))
-    with open("tepid_discover_log_{}.txt".format(options.name), 'a') as logfile:
+        pybedtools.BedTool(options.prefix + "split_processed.temp").filter(
+            lambda x: insertion_reads_high <= int(x[8])
+        ).saveas().each(lambda x: x[:-2]).moveto(options.prefix + "high.temp")
+        separate_reads(
+            options.prefix + "high.temp",
+            "insertions_{}.bed".format(options.name),
+            "insertion_reads_{}.txt".format(options.name),
+        )
+    with open("tepid_discover_log_{}.txt".format(options.name), "a") as logfile:
         logfile.write("tepid-discover finished normally at {}\n".format(ctime()))
 
     remove_temp(options)

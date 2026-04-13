@@ -8,8 +8,8 @@ TEPID uses illumina sequencing reads to identify novel TE variants. First, reads
 ```
 git clone git@github.com:ListerLab/TEPID.git
 cd ./TEPID
-pip install -r requirements.txt
-python setup.py install
+python3.9 -m pip install -e .
+python3.9 -m pip install -e .[dev]
 ```
 
 ## Testing
@@ -17,7 +17,7 @@ python setup.py install
 This will check that the code runs correctly and is able to identify a known, experimentally verified, TE insertion and TE deletion.
 
 ```
-python setup.py test
+python3.9 -m pytest
 ```
 
 ## Usage
@@ -172,10 +172,12 @@ To do this, the `merge_insertions.py` and `merge_deletions.py` scripts included 
 
 #### Python requirements
 
-* [python](https://www.python.org) v2.7  
-* [numpy](http://www.numpy.org/)  
-* [pybedtools](http://pythonhosted.org/pybedtools/)  
-* [pysam](http://pysam.readthedocs.org/en/latest/)  
+* [python](https://www.python.org) >= 3.9  
+* [numpy](http://www.numpy.org/) >= 2.0.2, < 2.1  
+* [pandas](https://pandas.pydata.org/) >= 2.3.3, < 3.0  
+* [pybedtools](http://pythonhosted.org/pybedtools/) >= 0.10.0  
+* [pysam](http://pysam.readthedocs.org/en/latest/) >= 0.22.0  
+* [pytest](https://pytest.org/) >= 8.0 for running the test suite  
 
 
 ## Citation

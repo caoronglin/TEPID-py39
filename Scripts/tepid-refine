@@ -1,16 +1,13 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
-    import pkg_resources
-    from tepid import tepid
+    from tepid import __version__, tepid
     import random
     import string
 
-    version = pkg_resources.require("TEPID")[0].version
-
     parser = ArgumentParser(description='TEPID -- refine TE insertion and deletion calls')
-    parser.add_argument('--version', action='version', version='%(prog)s '+str(version))
+    parser.add_argument('--version', action='version', version='%(prog)s ' + str(__version__))
     parser.add_argument('-k', '--keep', help='keep all intermediate files', action='store_true', required=False, default=False)
     parser.add_argument('-i', '--insertions', help='File containing collapsed TE insertions for all samples in population', required=False, default=False)
     parser.add_argument('-d', '--deletions', help='File containing collapsed TE deletions for all samples in population', required=False, default=False)

@@ -1,16 +1,32 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 from argparse import ArgumentParser
 
 
-parser = ArgumentParser(description='Genotype TE insertions')
+parser = ArgumentParser(description="Genotype TE insertions")
 group = parser.add_mutually_exclusive_group()
-group.add_argument('-d', '--deletions', help='run on deletions', action='store_true', required=False, default=False)
-group.add_argument('-i', '--insertions', help='run on insertions', action='store_true', required=False, default=False)
-parser.add_argument('-a', '--ambiguous', help='ambiguous TE variants filename', required=True)
-parser.add_argument('-m', '--merged', help='merged TE variants filename', required=True)
-parser.add_argument('-s', '--samples', help='all sample names', required=True)
-parser.add_argument('-r', '--reference', help='reference sample name', required=True)
+group.add_argument(
+    "-d",
+    "--deletions",
+    help="run on deletions",
+    action="store_true",
+    required=False,
+    default=False,
+)
+group.add_argument(
+    "-i",
+    "--insertions",
+    help="run on insertions",
+    action="store_true",
+    required=False,
+    default=False,
+)
+parser.add_argument(
+    "-a", "--ambiguous", help="ambiguous TE variants filename", required=True
+)
+parser.add_argument("-m", "--merged", help="merged TE variants filename", required=True)
+parser.add_argument("-s", "--samples", help="all sample names", required=True)
+parser.add_argument("-r", "--reference", help="reference sample name", required=True)
 options = parser.parse_args()
 
 if options.deletions is True:
@@ -23,7 +39,7 @@ else:
 
 def create_names_list(inf):
     names = []
-    with open(inf, 'r') as infile:
+    with open(inf, "r") as infile:
         for line in infile:
             line = line.rsplit()
             names.append(line[0])
@@ -32,11 +48,13 @@ def create_names_list(inf):
 
 def read_files_to_dict(f, val):
     d = {}
-    with open(f, 'r') as infile:
+    with open(f, "r") as infile:
         for line in infile:
             line = line.rsplit()
-            coords = '|'.join(line[:val])  # key common to ambiguous and merged insertions files
-            d[coords] = line[-1].split(',')  # accession names
+            coords = "|".join(
+                line[:val]
+            )  # key common to ambiguous and merged insertions files
+            d[coords] = line[-1].split(",")  # accession names
     return d
 
 
@@ -60,10 +78,18 @@ def genotype(merged, ambiguous, all_accessions, reference):
         for i in opposite_accessions:
             if i in ambiguous_accessions:
                 opposite_accessions.remove(i)
-        data = key.split('|')
+        data = key.split("|")
         te = data[-1]
         coords = data[:-1]
-        print("\t".join(coords)+"\t"+te+"\t"+",".join(value)+"\t"+",".join(opposite_accessions))
+        print(
+            "\t".join(coords)
+            + "\t"
+            + te
+            + "\t"
+            + ",".join(value)
+            + "\t"
+            + ",".join(opposite_accessions)
+        )
 
 
 accession = create_names_list(options.samples)
